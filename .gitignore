@@ -1,0 +1,34 @@
+# Build output
+build/
+out/
+.gradle/
+
+# Compiled classes
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Testcontainers reuse marker
+.testcontainers.properties
+
+# Gradle wrapper jar cache
+gradle/wrapper/gradle-wrapper.jar
