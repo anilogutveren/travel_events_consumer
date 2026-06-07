@@ -1,0 +1,269 @@
+openapi: "3.1.0"
+info:
+  title: Travel Events Consumer API
+  version: "1.0.0"
+  description: |
+    Operational and observability endpoints for the Travel Events Consumer service.
+    Event ingestion is via Kafka (not REST). REST endpoints cover health probes,
+    metrics, and audit log queries.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /actuator/health:
+    get:
+      summary: Liveness probe
+      description: |
+        Returns service liveness status. Kubernetes liveness probe target.
+        Returns 200 when the application process is healthy, 503 when a critical
+        component has failed irrecoverably.
+      operationId: getLiveness
+      tags: [Health]
+      responses:
+        "200":
+          description: Service is alive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example:
+                status: UP
+        "503":
+          description: Service is down
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /actuator/health/readiness:
+    get:
+      summary: Readiness probe
+      description: |
+        Returns service readiness. Kubernetes readiness probe target.
+        Returns 200 only when both Kafka and PostgreSQL connections are established
+        and the consumer is actively polling. Returns 503 during startup or outage.
+      operationId: getReadiness
+      tags: [Health]
+      responses:
+        "200":
+          description: Service is ready to accept traffic
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+        "503":
+          description: Service is not ready
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ReadinessResponse"
+
+  /actuator/prometheus:
+    get:
+      summary: Prometheus metrics scrape endpoint
+      description: Exposes all Micrometer metrics in Prometheus text format.
+      operationId: getMetrics
+      tags: [Metrics]
+      responses:
+        "200":
+          description: Prometheus metrics text
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /api/v1/audit-log:
+    get:
+      summary: Query event processing audit log
+      description: |
+        Returns paginated audit log entries. Supports filtering by event_id, status,
+        and date range. Results ordered by processed_at descending.
+      operationId: queryAuditLog
+      tags: [Audit]
+      parameters:
+        - name: event_id
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by exact event_id
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [PROCESSED, REJECTED, RETRY, DUPLICATE, DEAD_LETTERED]
+          description: Filter by processing status
+        - name: from
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: "Filter entries processed at or after this timestamp (ISO-8601)"
+        - name: to
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+          description: "Filter entries processed at or before this timestamp (ISO-8601)"
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Paginated audit log entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogPage"
+        "400":
+          description: Invalid query parameters
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+        "500":
+          description: Internal server error
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+  /api/v1/audit-log/{id}:
+    get:
+      summary: Get single audit log entry
+      operationId: getAuditLogEntry
+      tags: [Audit]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Audit log entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuditLogEntry"
+        "404":
+          description: Entry not found
+          content:
+            application/problem+json:
+              schema:
+                $ref: "#/components/schemas/ProblemDetail"
+
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, OUT_OF_SERVICE]
+
+    ReadinessResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN, OUT_OF_SERVICE]
+        components:
+          type: object
+          properties:
+            kafka:
+              $ref: "#/components/schemas/ComponentHealth"
+            db:
+              $ref: "#/components/schemas/ComponentHealth"
+
+    ComponentHealth:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [UP, DOWN]
+        details:
+          type: object
+          additionalProperties: true
+
+    AuditLogPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuditLogEntry"
+        page:
+          type: integer
+        size:
+          type: integer
+        total_elements:
+          type: integer
+          format: int64
+        total_pages:
+          type: integer
+
+    AuditLogEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        event_id:
+          type: string
+        topic:
+          type: string
+        partition_num:
+          type: integer
+        kafka_offset:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [PROCESSED, REJECTED, RETRY, DUPLICATE, DEAD_LETTERED]
+        error_message:
+          type: string
+          nullable: true
+        raw_payload_ref:
+          type: string
+          nullable: true
+        attempt_number:
+          type: integer
+        processed_at:
+          type: string
+          format: date-time
+
+    ProblemDetail:
+      type: object
+      description: RFC 7807 Problem Details
+      properties:
+        type:
+          type: string
+          format: uri
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri
