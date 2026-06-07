@@ -1,0 +1,13 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/travel_events
+    username: travel_user
+    password: travel_pass
+
+  kafka:
+    bootstrap-servers: localhost:9092
+
+logging:
+  level:
+    com.travel_events_consumer: DEBUG
+    org.springframework.kafka: INFO

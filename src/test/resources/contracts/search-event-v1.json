@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "search-event-v1.json",
+  "title": "SearchEvent",
+  "description": "User search activity event published by the source microservice",
+  "type": "object",
+  "required": ["event_id", "event_version", "event_timestamp", "user", "destination", "search_criteria", "search_result"],
+  "additionalProperties": true,
+  "properties": {
+    "event_id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Globally unique event identifier (UUID v4). Used as idempotency key."
+    },
+    "event_version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+$",
+      "description": "Schema version in MAJOR.MINOR format (e.g. '1.0')"
+    },
+    "event_timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 timestamp with timezone when the search was performed by the user"
+    },
+    "user": {
+      "type": "object",
+      "required": ["user_id"],
+      "additionalProperties": true,
+      "properties": {
+        "user_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Unique user identifier from the source system"
+        },
+        "user_type": {
+          "type": "string",
+          "description": "User classification (e.g. REGISTERED, GUEST, AGENT)"
+        },
+        "user_locale": {
+          "type": "string",
+          "pattern": "^[a-z]{2}(-[A-Z]{2})?$",
+          "description": "BCP-47 locale code (e.g. 'en-GB', 'fr')"
+        },
+        "session_id": {
+          "type": "string",
+          "description": "Browser or application session identifier"
+        }
+      }
+    },
+    "destination": {
+      "type": "object",
+      "required": ["destination_id", "destination_name"],
+      "additionalProperties": true,
+      "properties": {
+        "destination_id": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Destination identifier (airport code, city code, hotel ID, etc.)"
+        },
+        "destination_name": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Human-readable destination name"
+        },
+        "destination_type": {
+          "type": "string",
+          "enum": ["CITY", "AIRPORT", "REGION", "HOTEL", "OTHER"],
+          "description": "Destination category"
+        },
+        "region": {
+          "type": "string",
+          "description": "Geographic region (e.g. 'Western Europe')"
+        },
+        "country": {
+          "type": "string",
+          "pattern": "^[A-Z]{2}$",
+          "description": "ISO 3166-1 alpha-2 country code"
+        }
+      }
+    },
+    "search_criteria": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Flexible key-value map of search parameters. Common keys: departure_date, return_date, adults, children, cabin_class, origin_id.",
+      "examples": [
+        {
+          "departure_date": "2026-08-15",
+          "return_date": "2026-08-22",
+          "adults": 2,
+          "children": 0,
+          "cabin_class": "ECONOMY",
+          "origin_id": "LHR"
+        }
+      ]
+    },
+    "search_result": {
+      "type": "object",
+      "required": ["result_code"],
+      "additionalProperties": true,
+      "properties": {
+        "result_code": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Outcome code from the source system (e.g. SUCCESS, NO_RESULTS, TIMEOUT, ERROR)"
+        },
+        "result_summary": {
+          "type": "string",
+          "description": "Human-readable summary of the search result"
+        },
+        "result_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of results returned to the user"
+        },
+        "response_time_ms": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Time taken by the source system to generate results, in milliseconds"
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "event_id": "550e8400-e29b-41d4-a716-446655440000",
+      "event_version": "1.0",
+      "event_timestamp": "2026-06-07T14:30:00+01:00",
+      "user": {
+        "user_id": "usr-12345",
+        "user_type": "REGISTERED",
+        "user_locale": "en-GB",
+        "session_id": "sess-abc-xyz"
+      },
+      "destination": {
+        "destination_id": "BCN",
+        "destination_name": "Barcelona",
+        "destination_type": "CITY",
+        "region": "Southern Europe",
+        "country": "ES"
+      },
+      "search_criteria": {
+        "departure_date": "2026-08-15",
+        "return_date": "2026-08-22",
+        "adults": 2,
+        "children": 0,
+        "cabin_class": "ECONOMY",
+        "origin_id": "LHR"
+      },
+      "search_result": {
+        "result_code": "SUCCESS",
+        "result_summary": "142 flights found",
+        "result_count": 142,
+        "response_time_ms": 312
+      }
+    }
+  ]
+}
