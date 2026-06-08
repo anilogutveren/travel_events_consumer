@@ -32,3 +32,19 @@ logs/
 
 # Gradle wrapper jar cache
 gradle/wrapper/gradle-wrapper.jar
+
+# Local caches / temp artifacts
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+
+# Test and runtime leftovers
+coverage/
+*.pid
+
+# JetBrains local project files (keep shared settings tracked if added intentionally)
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/shelf/
